@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %} — {% if v %}Editar{% else %}Nuevo{% endif %} vehículo{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <a href="javascript:history.back()" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    <h1 style="font-size:22px;font-weight:700">{% if v %}Editar vehículo{% else %}Nuevo vehículo{% endif %}</h1>
+  </div>
+
+  <div class="card">
+    <form method="POST">
+      <div class="form-grid">
+        <div><label>Marca *</label><input type="text" name="marca" value="{{ v.marca if v else '' }}" placeholder="Toyota, Ford..." required></div>
+        <div><label>Modelo *</label><input type="text" name="modelo" value="{{ v.modelo if v else '' }}" placeholder="Corolla, F-150..." required></div>
+        <div><label>Año *</label><input type="number" name="anio" value="{{ v.anio if v else '' }}" placeholder="2020" min="1950" max="2030" required></div>
+        <div><label>Placa *</label><input type="text" name="placa" value="{{ v.placa if v else '' }}" placeholder="ABC-1234" required></div>
+        <div class="form-full"><label>VIN (número de serie)</label>
+          <input type="text" name="vin" value="{{ v.vin if v else '' }}" placeholder="1HGBH41JXMN109186" maxlength="17" style="font-family:monospace;letter-spacing:.05em;text-transform:uppercase">
+        </div>
+        <div><label>Tipo</label>
+          <select name="tipo">
+            <option value="sedan" {% if v and v.tipo=='sedan' %}selected{% endif %}>Auto / Sedán</option>
+            <option value="suv" {% if v and v.tipo=='suv' %}selected{% endif %}>SUV / Camioneta</option>
+            <option value="pickup" {% if v and v.tipo=='pickup' %}selected{% endif %}>Pickup</option>
+            <option value="van" {% if v and v.tipo=='van' %}selected{% endif %}>Van / Furgón</option>
+          </select>
+        </div>
+        <div><label>Combustible</label>
+          <select name="combustible">
+            <option value="gasolina" {% if v and v.combustible=='gasolina' %}selected{% endif %}>Gasolina</option>
+            <option value="diesel" {% if v and v.combustible=='diesel' %}selected{% endif %}>Diésel</option>
+            <option value="hibrido" {% if v and v.combustible=='hibrido' %}selected{% endif %}>Híbrido</option>
+            <option value="electrico" {% if v and v.combustible=='electrico' %}selected{% endif %}>Eléctrico</option>
+            <option value="gnv" {% if v and v.combustible=='gnv' %}selected{% endif %}>GNV</option>
+            <option value="glp" {% if v and v.combustible=='glp' %}selected{% endif %}>GLP</option>
+          </select>
+        </div>
+        <div><label>Color</label><input type="text" name="color" value="{{ v.color if v else '' }}" placeholder="Blanco, Rojo..."></div>
+        <div><label>Rendimiento esperado (km/L)</label><input type="number" name="kml_esperado" value="{{ v.kml_esperado if v else '' }}" placeholder="12.5" step="0.1"></div>
+      </div>
+      <hr class="sep">
+      <div class="form-grid">
+        <div><label>Odómetro actual (km) *</label><input type="number" name="odometro" value="{{ v.odometro|int if v else '' }}" placeholder="45000" required></div>
+        <div><label>Fecha último servicio</label><input type="date" name="ultimo_servicio_fecha" value="{{ v.ultimo_servicio_fecha.strftime('%Y-%m-%d') if v and v.ultimo_servicio_fecha else '' }}"></div>
+        <div><label>Km en último servicio</label><input type="number" name="ultimo_servicio_odo" value="{{ v.ultimo_servicio_odo|int if v and v.ultimo_servicio_odo else '' }}" placeholder="40000"></div>
+      </div>
+      <hr class="sep">
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:14px;font-size:16px">
+        <i class="ti ti-check"></i> {% if v %}Guardar cambios{% else %}Guardar vehículo{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

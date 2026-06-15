@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %} — Usuarios{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <a href="/admin" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    <h1 style="font-size:22px;font-weight:700">Gestión de usuarios</h1>
+  </div>
+
+  <div class="card">
+    <h2>Agregar usuario</h2>
+    <form method="POST">
+      <div class="form-grid">
+        <div><label>Nombre completo *</label><input type="text" name="nombre" placeholder="Juan Pérez" required></div>
+        <div><label>Correo electrónico *</label><input type="email" name="email" placeholder="juan@correo.com" required></div>
+        <div><label>Contraseña *</label><input type="password" name="password" placeholder="Mínimo 6 caracteres" required></div>
+        <div><label>Rol</label>
+          <select name="rol">
+            <option value="usuario">Usuario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-green"><i class="ti ti-user-plus"></i> Crear usuario</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Usuarios registrados</h2>
+    <table>
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Vehículos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td><strong>{{ u.nombre }}</strong></td>
+        <td style="color:var(--txt2)">{{ u.email }}</td>
+        <td><span class="badge {% if u.rol=='admin' %}badge-green{% else %}badge-yellow{% endif %}">{{ u.rol }}</span></td>
+        <td>{{ u.vehiculos|length }}</td>
+        <td>{% if u.activo %}<span class="badge badge-green">Activo</span>{% else %}<span class="badge badge-red">Inactivo</span>{% endif %}</td>
+        <td><a href="/admin/usuario/{{ u.id }}/toggle" class="btn btn-sm {% if u.activo %}btn-red{% endif %}">
+          {% if u.activo %}Desactivar{% else %}Activar{% endif %}
+        </a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

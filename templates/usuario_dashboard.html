@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %} — Mis vehículos{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h1 style="font-size:22px;font-weight:700">Mis vehículos</h1>
+    <a href="/usuario/vehiculo/nuevo" class="btn btn-green"><i class="ti ti-plus"></i> Agregar</a>
+  </div>
+
+  {% if data %}
+  {% for d in data %}
+  <a href="/usuario/vehiculo/{{ d.vehiculo.id }}" style="text-decoration:none;color:inherit">
+    <div class="card" style="cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:48px;height:48px;border-radius:10px;background:var(--gl);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti {% if d.vehiculo.tipo in ['suv','pickup'] %}ti-truck{% else %}ti-car{% endif %}" style="font-size:24px;color:var(--gd)"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:16px">{{ d.vehiculo.marca }} {{ d.vehiculo.modelo }} <span style="font-weight:400;color:var(--txt2)">{{ d.vehiculo.anio }}</span></div>
+          <div style="font-size:13px;color:var(--txt2);margin-top:2px">{{ d.vehiculo.placa }} · {{ "{:,.0f}".format(d.vehiculo.odometro) }} km · {{ d.vehiculo.combustible|capitalize }}</div>
+          {% if d.vehiculo.vin %}<div style="margin-top:4px;font-family:monospace;font-size:11px;color:var(--txt2);background:var(--bg2);display:inline-block;padding:2px 6px;border-radius:4px;border:1px solid var(--brd)">VIN {{ d.vehiculo.vin }}</div>{% endif %}
+        </div>
+        <div>
+          {% if d.estado == 'red' %}<span class="badge badge-red">⚠ Vencido</span>
+          {% elif d.estado == 'yellow' %}<span class="badge badge-yellow">⏰ Próximo</span>
+          {% else %}<span class="badge badge-green">✓ Al día</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+  {% else %}
+  <div class="card" style="text-align:center;padding:48px 20px;color:var(--txt2)">
+    <i class="ti ti-car" style="font-size:52px;display:block;margin-bottom:14px;color:var(--brd)"></i>
+    <p style="font-size:15px;margin-bottom:16px">No tiene vehículos registrados.</p>
+    <a href="/usuario/vehiculo/nuevo" class="btn btn-green"><i class="ti ti-plus"></i> Agregar vehículo</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

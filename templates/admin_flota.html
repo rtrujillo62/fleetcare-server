@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %} — Flota{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <a href="/admin" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    <h1 style="font-size:22px;font-weight:700">Flota completa</h1>
+  </div>
+  {% if data %}
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th>Vehículo</th><th>Propietario</th><th>Placa</th><th>Odómetro</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+      {% for d in data %}
+      <tr>
+        <td><strong>{{ d.vehiculo.marca }} {{ d.vehiculo.modelo }}</strong> <span style="color:var(--txt2)">{{ d.vehiculo.anio }}</span></td>
+        <td>{{ d.vehiculo.propietario.nombre }}</td>
+        <td>{{ d.vehiculo.placa }}</td>
+        <td>{{ "{:,.0f}".format(d.vehiculo.odometro) }} km</td>
+        <td>
+          {% if d.estado == 'red' %}<span class="badge badge-red">⚠ Vencido</span>
+          {% elif d.estado == 'yellow' %}<span class="badge badge-yellow">⏰ Próximo</span>
+          {% else %}<span class="badge badge-green">✓ Al día</span>{% endif %}
+        </td>
+        <td><a href="/admin/vehiculo/{{ d.vehiculo.id }}" class="btn btn-sm"><i class="ti ti-eye"></i> Ver</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:40px;color:var(--txt2)">
+    <i class="ti ti-car" style="font-size:48px;display:block;margin-bottom:12px;color:var(--brd)"></i>
+    <p>No hay vehículos registrados aún.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

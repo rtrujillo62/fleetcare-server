@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %} — Admin{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h1 style="font-size:22px;font-weight:700">Dashboard</h1>
+    <div style="display:flex;gap:8px">
+      <a href="/admin/flota" class="btn"><i class="ti ti-car"></i> Flota</a>
+      <a href="/admin/usuarios" class="btn btn-green"><i class="ti ti-users"></i> Usuarios</a>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="val">{{ usuarios|length }}</div><div class="lbl">Usuarios</div></div>
+    <div class="stat"><div class="val">{{ total_vehiculos }}</div><div class="lbl">Vehículos</div></div>
+    <div class="stat"><div class="val val-red">{{ alertas_red }}</div><div class="lbl">Vencidos</div></div>
+    <div class="stat"><div class="val val-yellow">{{ alertas_yellow }}</div><div class="lbl">Próximos</div></div>
+  </div>
+
+  <div class="card">
+    <h2><i class="ti ti-users" style="color:var(--g)"></i> Usuarios registrados</h2>
+    {% if usuarios %}
+    <table>
+      <thead><tr><th>Nombre</th><th>Email</th><th>Vehículos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td><strong>{{ u.nombre }}</strong></td>
+        <td style="color:var(--txt2)">{{ u.email }}</td>
+        <td>{{ u.vehiculos|length }}</td>
+        <td>
+          {% if u.activo %}<span class="badge badge-green">Activo</span>
+          {% else %}<span class="badge badge-red">Inactivo</span>{% endif %}
+        </td>
+        <td style="display:flex;gap:6px">
+          {% for v in u.vehiculos %}
+          <a href="/admin/vehiculo/{{ v.id }}" class="btn btn-sm"><i class="ti ti-car"></i> {{ v.marca }} {{ v.modelo }}</a>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--txt2);text-align:center;padding:20px">No hay usuarios registrados. <a href="/admin/usuarios" style="color:var(--g)">Agregar usuario</a></p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

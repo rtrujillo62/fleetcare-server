@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %} — {{ v.marca }} {{ v.modelo }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    {% if es_admin %}
+    <a href="/admin/flota" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    {% else %}
+    <a href="/usuario" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    {% endif %}
+    <h1 style="font-size:20px;font-weight:700;flex:1">{{ v.marca }} {{ v.modelo }} {{ v.anio }}</h1>
+    <a href="/usuario/vehiculo/{{ v.id }}/editar" class="btn btn-sm"><i class="ti ti-edit"></i> Editar</a>
+  </div>
+
+  <!-- Info vehículo -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+      <div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">Placa</div><div style="font-weight:500">{{ v.placa }}</div></div>
+      <div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">Odómetro</div><div style="font-weight:500">{{ "{:,.0f}".format(v.odometro) }} km</div></div>
+      <div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">Combustible</div><div style="font-weight:500;text-transform:capitalize">{{ v.combustible }}</div></div>
+      {% if v.vin %}<div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">VIN</div><div style="font-family:monospace;font-size:12px">{{ v.vin }}</div></div>{% endif %}
+      {% if v.kml_esperado %}<div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">Rend. esperado</div><div style="font-weight:500">{{ v.kml_esperado }} km/L</div></div>{% endif %}
+      {% if v.propietario %}<div><div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600">Propietario</div><div style="font-weight:500">{{ v.propietario.nombre }}</div></div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Botones acción -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button onclick="document.getElementById('modal-servicio').style.display='flex'" class="btn btn-green">
+      <i class="ti ti-tool"></i> Registrar servicio
+    </button>
+    <button onclick="document.getElementById('modal-combustible').style.display='flex'" class="btn" style="color:var(--blue);border-color:#B5D4F4">
+      <i class="ti ti-gas-station"></i> Combustible
+    </button>
+    <button onclick="document.getElementById('modal-odo').style.display='flex'" class="btn">
+      <i class="ti ti-gauge"></i> Actualizar km
+    </button>
+    {% if es_admin %}
+    <button onclick="document.getElementById('modal-doc').style.display='flex'" class="btn" style="color:var(--txt2)">
+      <i class="ti ti-file-description"></i> Agregar documento
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Documentos con vencimiento -->
+  {% if docs %}
+  <div class="card">
+    <h2><i class="ti ti-file-description" style="color:var(--g)"></i> Documentos</h2>
+    <table>
+      <thead><tr><th>Tipo</th><th>Descripción</th><th>Vencimiento</th><th>Estado</th>{% if es_admin %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+      {% for d in docs %}
+      <tr>
+        <td style="text-transform:capitalize">{{ d.doc.tipo }}</td>
+        <td>{{ d.doc.descripcion }}</td>
+        <td>{% if d.doc.vencimiento %}{{ d.doc.vencimiento.strftime('%d/%m/%Y') }}{% else %}—{% endif %}</td>
+        <td>{% if d.estado=='red' %}<span class="badge badge-red">⚠ Vencido</span>
+            {% elif d.estado=='yellow' %}<span class="badge badge-yellow">⏰ Próximo</span>
+            {% else %}<span class="badge badge-green">✓ Vigente</span>{% endif %}
+        </td>
+        {% if es_admin %}<td><a href="/admin/documento/{{ d.doc.id }}/eliminar" class="btn btn-sm btn-red" onclick="return confirm('¿Eliminar?')"><i class="ti ti-trash"></i></a></td>{% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Plan de mantenimiento -->
+  <div class="card">
+    <h2><i class="ti ti-tool" style="color:var(--g)"></i> Plan de mantenimiento</h2>
+    <table>
+      <thead><tr><th></th><th>Tarea</th><th>Próximo km</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for t in tareas %}
+      <tr>
+        <td><span class="dot dot-{{ t.estado }}"></span></td>
+        <td>{{ t.tarea.nombre }}</td>
+        <td>{% if t.proximo_km %}{{ "{:,.0f}".format(t.proximo_km) }} km{% else %}—{% endif %}</td>
+        <td>{% if t.estado=='red' %}<span class="badge badge-red">Vencido</span>
+            {% elif t.estado=='yellow' %}<span class="badge badge-yellow">Próximo</span>
+            {% else %}<span class="badge badge-green">Al día</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Historial servicios -->
+  <div class="card">
+    <h2><i class="ti ti-history" style="color:var(--g)"></i> Historial de servicios</h2>
+    {% if servicios %}
+    <table>
+      <thead><tr><th>Tarea</th><th>Fecha</th><th>Odómetro</th><th>Costo</th><th>Notas</th></tr></thead>
+      <tbody>
+      {% for s in servicios %}
+      {% set tarea_nombre = {'oil':'Cambio de aceite','air':'Filtro de aire','fuel':'Filtro de combustible','cabin':'Filtro de cabina','tires':'Rotación de llantas','brakes':'Revisión de frenos','battery':'Revisión de batería','coolant':'Líquido refrigerante','spark':'Bujías','timing':'Correa de distribución','trans':'Fluido de transmisión','align':'Alineación y balanceo'} %}
+      <tr>
+        <td>{{ tarea_nombre.get(s.tarea_id, s.tarea_id) }}</td>
+        <td>{{ s.fecha.strftime('%d/%m/%Y') }}</td>
+        <td>{{ "{:,.0f}".format(s.odometro) }} km</td>
+        <td>{% if s.costo %}${{ "%.2f"|format(s.costo) }}{% else %}—{% endif %}</td>
+        <td style="color:var(--txt2);font-size:13px">{{ s.notas or '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--txt2);font-size:13px">Sin servicios registrados.</p>{% endif %}
+  </div>
+
+  <!-- Historial combustible -->
+  <div class="card">
+    <h2><i class="ti ti-gas-station" style="color:var(--blue)"></i> Historial de combustible</h2>
+    {% if combustibles %}
+    <table>
+      <thead><tr><th>Fecha</th><th>Odómetro</th><th>Litros</th><th>Costo</th><th>Precio/L</th><th>Tipo</th></tr></thead>
+      <tbody>
+      {% for c in combustibles %}
+      <tr>
+        <td>{{ c.fecha.strftime('%d/%m/%Y') }}</td>
+        <td>{{ "{:,.0f}".format(c.odometro) }} km</td>
+        <td>{{ "%.1f"|format(c.litros) }} L</td>
+        <td>{% if c.costo %}${{ "%.2f"|format(c.costo) }}{% else %}—{% endif %}</td>
+        <td>{% if c.precio_litro %}${{ "%.3f"|format(c.precio_litro) }}{% else %}—{% endif %}</td>
+        <td>{% if c.tanque_lleno %}<span class="badge badge-green">Lleno</span>{% else %}<span style="color:var(--txt2);font-size:12px">Parcial</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--txt2);font-size:13px">Sin registros de combustible.</p>{% endif %}
+  </div>
+
+  <!-- Lecturas odómetro -->
+  <div class="card">
+    <h2><i class="ti ti-gauge" style="color:var(--g)"></i> Lecturas de odómetro</h2>
+    {% if lecturas %}
+    <table>
+      <thead><tr><th>Fecha</th><th>Odómetro</th><th>Fuente</th></tr></thead>
+      <tbody>
+      {% for l in lecturas %}
+      <tr>
+        <td>{{ l.fecha.strftime('%d/%m/%Y') }}</td>
+        <td>{{ "{:,.0f}".format(l.odometro) }} km</td>
+        <td style="text-transform:capitalize;color:var(--txt2)">{{ l.fuente }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:var(--txt2);font-size:13px">Sin lecturas registradas.</p>{% endif %}
+  </div>
+</div>
+
+<!-- MODAL: Registrar servicio -->
+<div id="modal-servicio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:600">Registrar servicio</h2>
+      <button onclick="document.getElementById('modal-servicio').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#777">×</button>
+    </div>
+    <form method="POST" action="/usuario/vehiculo/{{ v.id }}/servicio">
+      <label>Tareas realizadas *</label>
+      <div style="border:1px solid var(--brd);border-radius:10px;margin-bottom:14px;overflow:hidden">
+        {% set tnames = {'oil':'Cambio de aceite','air':'Filtro de aire','fuel':'Filtro de combustible','cabin':'Filtro de cabina','tires':'Rotación de llantas','brakes':'Revisión de frenos','battery':'Revisión de batería','coolant':'Líquido refrigerante','spark':'Bujías','timing':'Correa de distribución','trans':'Fluido de transmisión','align':'Alineación y balanceo'} %}
+        {% for t in tareas %}
+        <label style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--brd);cursor:pointer;margin:0;font-size:14px;font-weight:500;color:var(--txt)">
+          <input type="checkbox" name="tareas" value="{{ t.tarea.id }}" style="width:18px;height:18px;accent-color:var(--g);margin:0;flex-shrink:0">
+          <span class="dot dot-{{ t.estado }}" style="flex-shrink:0"></span>
+          {{ t.tarea.nombre }}
+        </label>
+        {% endfor %}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Fecha *</label><input type="date" name="fecha" value="{{ now }}" required></div>
+        <div><label>Odómetro (km) *</label><input type="number" name="odometro" value="{{ v.odometro|int }}" required></div>
+        <div><label>Costo total</label><input type="number" name="costo" placeholder="0.00" step="0.01"></div>
+        <div></div>
+      </div>
+      <label>Taller / Notas</label>
+      <textarea name="notas" rows="2" placeholder="Nombre del taller, observaciones..."></textarea>
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center">
+        <i class="ti ti-check"></i> Registrar
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Registrar combustible -->
+<div id="modal-combustible" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:500px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:600">Registrar combustible</h2>
+      <button onclick="document.getElementById('modal-combustible').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#777">×</button>
+    </div>
+    <form method="POST" action="/usuario/vehiculo/{{ v.id }}/combustible">
+      <label>Fecha</label><input type="date" name="fecha" id="fc-fecha" value="{{ now }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label>Odómetro (km) *</label><input type="number" name="odometro" id="fc-odo" value="{{ v.odometro|int }}" required oninput="calcPxL()"></div>
+        <div><label>Litros *</label><input type="number" name="litros" id="fc-litros" placeholder="40.0" step="0.1" required oninput="calcPxL()"></div>
+        <div><label>Costo total *</label><input type="number" name="costo" id="fc-costo" placeholder="65.00" step="0.01" required oninput="calcPxL()"></div>
+        <div><label>Precio/litro <span style="font-size:11px;color:var(--g);font-weight:600">AUTO</span></label>
+          <input type="text" id="fc-pxl" readonly style="background:#f6f6f4;color:#777" placeholder="—">
+        </div>
+      </div>
+      <label>¿Tanque lleno?</label>
+      <select name="tanque_lleno">
+        <option value="1">Sí — tanque lleno</option>
+        <option value="0">No — carga parcial</option>
+      </select>
+      <label>Notas</label>
+      <textarea name="notas" rows="2" placeholder="Estación, ciudad..."></textarea>
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center">
+        <i class="ti ti-gas-station"></i> Registrar
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Actualizar odómetro -->
+<div id="modal-odo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:600">Actualizar odómetro</h2>
+      <button onclick="document.getElementById('modal-odo').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#777">×</button>
+    </div>
+    <form method="POST" action="/usuario/vehiculo/{{ v.id }}/odometro">
+      <label>Lectura actual (km) *</label>
+      <input type="number" name="odometro" value="{{ v.odometro|int }}" required>
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center">
+        <i class="ti ti-check"></i> Guardar
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if es_admin %}
+<!-- MODAL: Agregar documento -->
+<div id="modal-doc" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:440px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:600">Agregar documento</h2>
+      <button onclick="document.getElementById('modal-doc').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:22px;color:#777">×</button>
+    </div>
+    <form method="POST" action="/admin/documento/agregar">
+      <input type="hidden" name="vehiculo_id" value="{{ v.id }}">
+      <label>Tipo *</label>
+      <select name="tipo">
+        {% for td in tipos_doc %}<option value="{{ td.id }}">{{ td.nombre }}</option>{% endfor %}
+      </select>
+      <label>Descripción</label>
+      <input type="text" name="descripcion" placeholder="Ej: Placa 2026, ANASE...">
+      <label>Fecha de vencimiento *</label>
+      <input type="date" name="vencimiento" required>
+      <label>Notas</label>
+      <textarea name="notas" rows="2"></textarea>
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center">
+        <i class="ti ti-check"></i> Guardar
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+const now = new Date().toISOString().split('T')[0];
+document.querySelectorAll('input[type=date]').forEach(el=>{if(!el.value)el.value=now;});
+function calcPxL(){
+  const lt=parseFloat(document.getElementById('fc-litros').value)||0;
+  const co=parseFloat(document.getElementById('fc-costo').value)||0;
+  document.getElementById('fc-pxl').value=(lt>0&&co>0)?(co/lt).toFixed(3):'';
+}
+</script>
+{% endblock %}
