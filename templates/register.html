@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FleetCare">
-<title>FleetCare — Acceso</title>
+<title>FleetCare — Registro</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--g:#1D9E75;--gd:#0F6E56;--bg:#f6f6f4;--brd:#e0e0e0;--txt:#111;--txt2:#777;--red:#A32D2D;--redbg:#FCEBEB;--r:14px;--rsm:10px}
 body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.box{background:#fff;border:1px solid var(--brd);border-radius:var(--r);padding:36px 32px;width:100%;max-width:400px}
+.box{background:#fff;border:1px solid var(--brd);border-radius:var(--r);padding:36px 32px;width:100%;max-width:420px}
 .logo{text-align:center;font-size:28px;font-weight:700;color:var(--g);margin-bottom:6px}
 .sub{text-align:center;font-size:14px;color:var(--txt2);margin-bottom:28px}
 label{font-size:13px;color:var(--txt2);font-weight:500;display:block;margin-bottom:5px}
@@ -20,25 +20,29 @@ input:focus{outline:2px solid var(--g);border-color:var(--g)}
 .btn{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:var(--rsm);font-size:16px;font-weight:600;cursor:pointer;font-family:inherit}
 .btn:active{background:var(--gd)}
 .error{background:var(--redbg);color:var(--red);border-radius:var(--rsm);padding:10px 14px;font-size:13px;margin-bottom:16px;border:1px solid #F3C6C6}
+.login-link{text-align:center;margin-top:16px;font-size:13px;color:var(--txt2)}
+.login-link a{color:var(--g);text-decoration:none;font-weight:500}
 </style>
 </head>
 <body>
 <div class="box">
   <div class="logo">⚙ FleetCare</div>
-  <div class="sub">Sistema de mantenimiento preventivo</div>
+  <div class="sub">Crea tu cuenta para registrar tus vehículos</div>
   {% if error %}
   <div class="error">{{ error }}</div>
   {% endif %}
   <form method="POST">
-    <label>Correo electrónico</label>
-    <input type="email" name="email" placeholder="usuario@correo.com" required autocomplete="email">
-    <label>Contraseña</label>
-    <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
-    <button type="submit" class="btn">Ingresar</button>
+    <label>Nombre completo *</label>
+    <input type="text" name="nombre" placeholder="Juan Pérez" required autocomplete="name">
+    <label>Correo electrónico *</label>
+    <input type="email" name="email" placeholder="juan@correo.com" required autocomplete="email">
+    <label>Contraseña *</label>
+    <input type="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
+    <label>Confirmar contraseña *</label>
+    <input type="password" name="password2" placeholder="Repite la contraseña" required autocomplete="new-password">
+    <button type="submit" class="btn">Crear cuenta</button>
   </form>
-  <div style="text-align:center;margin-top:16px;font-size:13px;color:#777">
-    ¿No tienes cuenta? <a href="/register" style="color:var(--g);text-decoration:none;font-weight:500">Regístrate aquí</a>
-  </div>
+  <div class="login-link">¿Ya tienes cuenta? <a href="/login">Ingresar</a></div>
 </div>
 </body>
 </html>

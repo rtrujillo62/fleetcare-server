@@ -186,6 +186,38 @@ def index():
         return redirect(url_for('dashboard_admin'))
     return redirect(url_for('dashboard_usuario'))
 
+@app.route('/register', methods=['GET','POST'])
+def register():
+    if 'usuario_id' in session:
+        return redirect(url_for('index'))
+    error = None
+    if request.method == 'POST':
+        nombre = request.form.get('nombre','').strip()
+        email = request.form.get('email','').strip().lower()
+        password = request.form.get('password','')
+        password2 = request.form.get('password2','')
+        if not nombre or not email or not password:
+            error = 'Completa todos los campos'
+        elif len(password) < 6:
+            error = 'La contraseña debe tener al menos 6 caracteres'
+        elif password != password2:
+            error = 'Las contraseñas no coinciden'
+        elif Usuario.query.filter_by(email=email).first():
+            error = 'Ya existe una cuenta con ese correo'
+        else:
+            u = Usuario(
+                nombre=nombre, email=email,
+                password_hash=generate_password_hash(password),
+                rol='usuario'
+            )
+            db.session.add(u)
+            db.session.commit()
+            session['usuario_id'] = u.id
+            session['nombre'] = u.nombre
+            session['rol'] = u.rol
+            return redirect(url_for('dashboard_usuario'))
+    return render_template('register.html', error=error)
+
 @app.route('/login', methods=['GET','POST'])
 def login():
     error = None
