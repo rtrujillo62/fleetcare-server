@@ -350,6 +350,34 @@ def eliminar_documento(did):
     db.session.commit()
     return redirect(url_for('admin_vehiculo', vid=vid))
 
+@app.route('/admin/vehiculo/<int:vid>/intervalos')
+@admin_requerido
+def editar_intervalos(vid):
+    v = Vehiculo.query.get_or_404(vid)
+    intervalos = json.loads(v.intervalos or '{}')
+    tareas_actuales = []
+    for t in TAREAS:
+        km_actual = intervalos.get(t['id']+'_km', '')
+        mo_actual = intervalos.get(t['id']+'_mo', '')
+        tareas_actuales.append({**t, 'km_actual': km_actual, 'mo_actual': mo_actual})
+    return render_template('intervalos_form.html', v=v, tareas=tareas_actuales, usuario=usuario_actual())
+
+@app.route('/admin/vehiculo/<int:vid>/intervalos', methods=['POST'])
+@admin_requerido
+def guardar_intervalos(vid):
+    v = Vehiculo.query.get_or_404(vid)
+    intervalos = {}
+    for t in TAREAS:
+        km = request.form.get('km_'+t['id'], '').strip()
+        mo = request.form.get('mo_'+t['id'], '').strip()
+        if km != '':
+            intervalos[t['id']+'_km'] = float(km)
+        if mo != '':
+            intervalos[t['id']+'_mo'] = float(mo)
+    v.intervalos = json.dumps(intervalos)
+    db.session.commit()
+    return redirect(url_for('admin_vehiculo', vid=vid))
+
 # ─── RUTAS USUARIO ─────────────────────────────────────────
 
 @app.route('/usuario')

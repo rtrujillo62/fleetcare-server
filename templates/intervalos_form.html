@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %} — Intervalos{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <a href="/admin/vehiculo/{{ v.id }}" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    <h1 style="font-size:20px;font-weight:700">Intervalos — {{ v.marca }} {{ v.modelo }}</h1>
+  </div>
+  <p style="color:var(--txt2);font-size:13px;margin-bottom:20px;padding-left:46px">
+    Ajusta los intervalos según el fabricante de este vehículo. Deja en blanco para usar el valor estándar.
+  </p>
+
+  <form method="POST">
+    {% for t in tareas %}
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;font-weight:600;font-size:15px">
+        <i class="ti ti-tool" style="color:var(--g)"></i> {{ t.nombre }}
+      </div>
+      <div class="form-grid">
+        <div>
+          <label>Kilómetros</label>
+          <input type="number" name="km_{{ t.id }}" value="{{ t.km_actual }}" placeholder="Estándar: {{ t.km if t.km > 0 else '—' }}" min="0">
+        </div>
+        <div>
+          <label>Meses</label>
+          <input type="number" name="mo_{{ t.id }}" value="{{ t.mo_actual }}" placeholder="Estándar: {{ t.meses if t.meses > 0 else '—' }}" min="0">
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:14px;font-size:16px">
+      <i class="ti ti-check"></i> Guardar intervalos
+    </button>
+  </form>
+</div>
+{% endblock %}
