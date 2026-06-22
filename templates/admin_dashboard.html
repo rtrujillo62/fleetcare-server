@@ -2,9 +2,10 @@
 {% block title %} — Admin{% endblock %}
 {% block content %}
 <div class="container">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
     <h1 style="font-size:22px;font-weight:700">Dashboard</h1>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/admin/enviar-alertas" class="btn" onclick="return confirm('¿Enviar correos de alerta a todos los usuarios con mantenimientos pendientes?')" style="color:#A8650A;border-color:#F5DBA8"><i class="ti ti-bell-ringing"></i> Enviar alertas</a>
       <a href="/admin/flota" class="btn"><i class="ti ti-car"></i> Flota</a>
       <a href="/admin/usuarios" class="btn btn-green"><i class="ti ti-users"></i> Usuarios</a>
     </div>

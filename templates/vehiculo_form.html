@@ -37,6 +37,8 @@
         </div>
         <div><label>Color</label><input type="text" name="color" value="{{ v.color if v else '' }}" placeholder="Blanco, Rojo..."></div>
         <div><label>Rendimiento esperado (km/L)</label><input type="number" name="kml_esperado" value="{{ v.kml_esperado if v else '' }}" placeholder="12.5" step="0.1"></div>
+      <div><label>Capacidad del tanque (litros)</label><input type="number" name="capacidad_tanque" value="{{ v.capacidad_tanque if v else '' }}" placeholder="60"></div>
+      <div><label>Alertar cuando falten (km)</label><input type="number" name="alerta_km" value="{{ v.alerta_km if v else '250' }}" placeholder="250"></div>
       </div>
       <hr class="sep">
       <div class="form-grid">
@@ -45,6 +47,9 @@
         <div><label>Km en último servicio</label><input type="number" name="ultimo_servicio_odo" value="{{ v.ultimo_servicio_odo|int if v and v.ultimo_servicio_odo else '' }}" placeholder="40000"></div>
       </div>
       <hr class="sep">
+      <p style="text-align:center;font-size:13px;color:var(--txt2);margin-bottom:10px">
+        <i class="ti ti-info-circle" style="vertical-align:-2px"></i> Por favor verifique todos los datos antes de guardar.
+      </p>
       <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:14px;font-size:16px">
         <i class="ti ti-check"></i> {% if v %}Guardar cambios{% else %}Guardar vehículo{% endif %}
       </button>

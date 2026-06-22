@@ -7,7 +7,14 @@ import json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fleetcare-secret-2026')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///fleetcare.db')
+_data_dir = '/data'
+try:
+    os.makedirs(_data_dir, exist_ok=True)
+    _db_path = f'sqlite:///{_data_dir}/fleetcare.db'
+except (OSError, PermissionError):
+    _db_path = 'sqlite:///fleetcare.db'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', _db_path)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -37,6 +44,8 @@ class Vehiculo(db.Model):
     color = db.Column(db.String(30))
     odometro = db.Column(db.Float, default=0)
     kml_esperado = db.Column(db.Float)
+    capacidad_tanque = db.Column(db.Float)  # litros
+    alerta_km = db.Column(db.Float, default=250)  # km antes de vencer para alertar
     ultimo_servicio_fecha = db.Column(db.Date)
     ultimo_servicio_odo = db.Column(db.Float)
     intervalos = db.Column(db.Text, default='{}')  # JSON
@@ -140,6 +149,7 @@ def calcular_estado_tarea(vehiculo, tarea):
     intervalos = json.loads(vehiculo.intervalos or '{}')
     km_intervalo = intervalos.get(tarea['id']+'_km', tarea['km'])
     mo_intervalo = intervalos.get(tarea['id']+'_mo', tarea['meses'])
+    alerta_km = vehiculo.alerta_km or 250
 
     ultimo_svc = Servicio.query.filter_by(
         vehiculo_id=vehiculo.id, tarea_id=tarea['id']
@@ -151,19 +161,38 @@ def calcular_estado_tarea(vehiculo, tarea):
     meses_diff = (date.today() - ultima_fecha).days / 30.44
     km_diff = vehiculo.odometro - ultimo_km
 
-    pct_km = km_diff / km_intervalo if km_intervalo > 0 else 0
-    pct_mo = meses_diff / mo_intervalo if mo_intervalo > 0 else 0
-    pct = min(max(pct_km, pct_mo), 1.0)
+    proximo_km = ultimo_km + km_intervalo if km_intervalo > 0 else None
+    km_restantes = (proximo_km - vehiculo.odometro) if proximo_km else None
 
-    if pct >= 1.0:
+    # Estado por km
+    if proximo_km and vehiculo.odometro >= proximo_km:
+        estado_km = 'red'
+    elif km_restantes is not None and km_restantes <= alerta_km:
+        estado_km = 'yellow'
+    else:
+        estado_km = 'green'
+
+    # Estado por tiempo
+    if mo_intervalo > 0:
+        if meses_diff >= mo_intervalo:
+            estado_mo = 'red'
+        elif meses_diff >= (mo_intervalo - 1):  # 1 mes antes
+            estado_mo = 'yellow'
+        else:
+            estado_mo = 'green'
+    else:
+        estado_mo = 'green'
+
+    # El peor de los dos gana
+    if 'red' in [estado_km, estado_mo]:
         estado = 'red'
-    elif pct >= 0.85:
+    elif 'yellow' in [estado_km, estado_mo]:
         estado = 'yellow'
     else:
         estado = 'green'
 
-    proximo_km = ultimo_km + km_intervalo if km_intervalo > 0 else None
-    return {'estado': estado, 'pct': pct, 'proximo_km': proximo_km}
+    pct = min(km_diff / km_intervalo if km_intervalo > 0 else 0, 1.0)
+    return {'estado': estado, 'pct': pct, 'proximo_km': proximo_km, 'km_restantes': km_restantes}
 
 def calcular_estado_documento(doc):
     if not doc.vencimiento:
@@ -314,17 +343,21 @@ def admin_flota():
 @admin_requerido
 def admin_vehiculo(vid):
     v = Vehiculo.query.get_or_404(vid)
-    tareas_con_estado = [{'tarea':t, **calcular_estado_tarea(v,t)} for t in TAREAS]
+    tareas_con_estado = sorted(
+        [{'tarea':t, **calcular_estado_tarea(v,t)} for t in TAREAS],
+        key=lambda x: (x['proximo_km'] or 999999)
+    )
     servicios = Servicio.query.filter_by(vehiculo_id=vid).order_by(Servicio.fecha.desc()).all()
     combustibles = RegistroCombustible.query.filter_by(vehiculo_id=vid).order_by(RegistroCombustible.fecha.desc()).all()
     lecturas = LecturaOdo.query.filter_by(vehiculo_id=vid).order_by(LecturaOdo.fecha.desc()).limit(10).all()
     documentos = Documento.query.filter_by(vehiculo_id=vid).all()
     docs_con_estado = [{'doc':d,'estado':calcular_estado_documento(d)} for d in documentos]
+    error = request.args.get('error')
     return render_template('vehiculo_detalle.html',
         v=v, tareas=tareas_con_estado, servicios=servicios,
         combustibles=combustibles, lecturas=lecturas,
         docs=docs_con_estado, tipos_doc=TIPOS_DOCUMENTO,
-        es_admin=True, usuario=usuario_actual()
+        es_admin=True, usuario=usuario_actual(), error=error
     )
 
 @app.route('/admin/documento/agregar', methods=['POST'])
@@ -415,6 +448,8 @@ def nuevo_vehiculo():
             color=request.form.get('color',''),
             odometro=float(request.form.get('odometro',0) or 0),
             kml_esperado=float(request.form.get('kml_esperado',0) or 0) or None,
+            capacidad_tanque=float(request.form.get('capacidad_tanque',0) or 0) or None,
+            alerta_km=float(request.form.get('alerta_km',250) or 250),
             ultimo_servicio_fecha=datetime.strptime(request.form.get('ultimo_servicio_fecha'), '%Y-%m-%d').date() if request.form.get('ultimo_servicio_fecha') else None,
             ultimo_servicio_odo=float(request.form.get('ultimo_servicio_odo',0) or 0) or None,
         )
@@ -430,17 +465,21 @@ def ver_vehiculo(vid):
     v = Vehiculo.query.get_or_404(vid)
     if v.usuario_id != u.id and u.rol != 'admin':
         return redirect(url_for('dashboard_usuario'))
-    tareas_con_estado = [{'tarea':t, **calcular_estado_tarea(v,t)} for t in TAREAS]
+    tareas_con_estado = sorted(
+        [{'tarea':t, **calcular_estado_tarea(v,t)} for t in TAREAS],
+        key=lambda x: (x['proximo_km'] or 999999)
+    )
     servicios = Servicio.query.filter_by(vehiculo_id=vid).order_by(Servicio.fecha.desc()).all()
     combustibles = RegistroCombustible.query.filter_by(vehiculo_id=vid).order_by(RegistroCombustible.fecha.desc()).all()
     lecturas = LecturaOdo.query.filter_by(vehiculo_id=vid).order_by(LecturaOdo.fecha.desc()).limit(10).all()
     documentos = Documento.query.filter_by(vehiculo_id=vid).all()
     docs_con_estado = [{'doc':d,'estado':calcular_estado_documento(d)} for d in documentos]
+    error = request.args.get('error')
     return render_template('vehiculo_detalle.html',
         v=v, tareas=tareas_con_estado, servicios=servicios,
         combustibles=combustibles, lecturas=lecturas,
         docs=docs_con_estado, tipos_doc=TIPOS_DOCUMENTO,
-        es_admin=(u.rol=='admin'), usuario=u
+        es_admin=(u.rol=='admin'), usuario=u, error=error
     )
 
 @app.route('/usuario/vehiculo/<int:vid>/editar', methods=['GET','POST'])
@@ -461,6 +500,8 @@ def editar_vehiculo(vid):
         v.color = request.form.get('color','')
         v.odometro = float(request.form.get('odometro',0) or 0)
         v.kml_esperado = float(request.form.get('kml_esperado',0) or 0) or None
+        v.capacidad_tanque = float(request.form.get('capacidad_tanque',0) or 0) or None
+        v.alerta_km = float(request.form.get('alerta_km',250) or 250)
         ls_fecha = request.form.get('ultimo_servicio_fecha')
         v.ultimo_servicio_fecha = datetime.strptime(ls_fecha, '%Y-%m-%d').date() if ls_fecha else None
         ls_odo = request.form.get('ultimo_servicio_odo')
@@ -482,6 +523,14 @@ def registrar_servicio(vid):
     costo = float(request.form.get('costo',0) or 0) or None
     notas = request.form.get('notas','')
     fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else date.today()
+
+    # Validar odómetro
+    ultima_lectura = LecturaOdo.query.filter_by(vehiculo_id=vid).order_by(LecturaOdo.odometro.desc()).first()
+    odo_max = ultima_lectura.odometro if ultima_lectura else v.odometro
+    if odo < odo_max:
+        error = f'El odómetro ingresado ({int(odo):,} km) es menor al último registrado ({int(odo_max):,} km). Por favor verifique.'
+        return redirect(url_for('ver_vehiculo', vid=vid, error=error))
+
     for tid in tareas:
         s = Servicio(vehiculo_id=vid, tarea_id=tid, fecha=fecha, odometro=odo, costo=costo, notas=notas)
         db.session.add(s)
@@ -507,6 +556,21 @@ def registrar_combustible(vid):
     lleno = request.form.get('tanque_lleno') == '1'
     notas = request.form.get('notas','')
     fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else date.today()
+
+    # Validar odómetro — no menor al último
+    ultima_lectura = LecturaOdo.query.filter_by(vehiculo_id=vid).order_by(LecturaOdo.odometro.desc()).first()
+    odo_max = ultima_lectura.odometro if ultima_lectura else v.odometro
+    if odo < odo_max:
+        error = f'El odómetro ingresado ({int(odo):,} km) es menor al último registrado ({int(odo_max):,} km). Por favor verifique.'
+        return redirect(url_for('ver_vehiculo', vid=vid, error=error))
+
+    # Validar odómetro — no mayor al máximo posible (última lectura + kml * capacidad tanque)
+    if v.kml_esperado and v.capacidad_tanque:
+        max_posible = odo_max + (v.kml_esperado * v.capacidad_tanque)
+        if odo > max_posible:
+            error = f'El odómetro ingresado ({int(odo):,} km) parece incorrecto. El máximo posible desde la última lectura es {int(max_posible):,} km. Por favor verifique.'
+            return redirect(url_for('ver_vehiculo', vid=vid, error=error))
+
     r = RegistroCombustible(vehiculo_id=vid, fecha=fecha, odometro=odo, litros=litros,
         costo=costo, precio_litro=precio_litro, tanque_lleno=lleno, notas=notas)
     db.session.add(r)
@@ -526,12 +590,107 @@ def actualizar_odometro(vid):
         return redirect(url_for('dashboard_usuario'))
     odo = float(request.form.get('odometro',0) or 0)
     if odo > 0:
+        ultima_lectura = LecturaOdo.query.filter_by(vehiculo_id=vid).order_by(LecturaOdo.odometro.desc()).first()
+        odo_max = ultima_lectura.odometro if ultima_lectura else v.odometro
+        if odo < odo_max:
+            return redirect(url_for('ver_vehiculo', vid=vid,
+                error=f'El odómetro ingresado ({int(odo):,} km) es menor al último registrado ({int(odo_max):,} km).'))
         if odo > v.odometro:
             v.odometro = odo
         lec = LecturaOdo(vehiculo_id=vid, odometro=odo, fecha=date.today(), fuente='manual')
         db.session.add(lec)
         db.session.commit()
     return redirect(url_for('ver_vehiculo', vid=vid))
+
+# ─── CORREOS ───────────────────────────────────────────────
+
+def enviar_correo(destinatario_email, destinatario_nombre, asunto, cuerpo_html):
+    """Envía correo via SendGrid si está configurado, sino solo loguea."""
+    sg_key = os.environ.get('SENDGRID_API_KEY')
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@fleetcare.app')
+    if not sg_key:
+        print(f'[CORREO no configurado] Para: {destinatario_email} | Asunto: {asunto}')
+        return False
+    try:
+        import sendgrid
+        from sendgrid.helpers.mail import Mail
+        sg = sendgrid.SendGridAPIClient(api_key=sg_key)
+        message = Mail(
+            from_email=admin_email,
+            to_emails=destinatario_email,
+            subject=asunto,
+            html_content=cuerpo_html
+        )
+        sg.send(message)
+        return True
+    except Exception as e:
+        print(f'Error enviando correo: {e}')
+        return False
+
+def verificar_y_enviar_alertas():
+    """Revisa todos los vehículos y envía correos si hay alertas nuevas."""
+    admin = Usuario.query.filter_by(rol='admin').first()
+    admin_email = admin.email if admin else os.environ.get('ADMIN_EMAIL','admin@fleetcare.app')
+
+    for v in Vehiculo.query.all():
+        usuario = v.propietario
+        alertas_red = []
+        alertas_yellow = []
+
+        # Revisar tareas de mantenimiento
+        for t in TAREAS:
+            est = calcular_estado_tarea(v, t)
+            if est['estado'] == 'red':
+                alertas_red.append(f"🔴 {t['nombre']} — VENCIDO")
+            elif est['estado'] == 'yellow':
+                km_rest = est.get('km_restantes')
+                msg = f"🟡 {t['nombre']}"
+                if km_rest: msg += f" — faltan {int(km_rest):,} km"
+                alertas_yellow.append(msg)
+
+        # Revisar documentos
+        for doc in v.documentos:
+            est = calcular_estado_documento(doc)
+            if doc.vencimiento:
+                dias = (doc.vencimiento - date.today()).days
+                if est == 'red':
+                    alertas_red.append(f"🔴 {doc.tipo.capitalize()} — VENCIDO")
+                elif est == 'yellow':
+                    alertas_yellow.append(f"🟡 {doc.tipo.capitalize()} — vence en {dias} días")
+
+        if not alertas_red and not alertas_yellow:
+            continue
+
+        # Armar y enviar correo
+        nombre_vehiculo = f"{v.marca} {v.modelo} {v.anio} ({v.placa})"
+        todas_alertas = alertas_red + alertas_yellow
+        lista_html = ''.join(f'<li style="margin-bottom:6px">{a}</li>' for a in todas_alertas)
+
+        cuerpo = f"""
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+          <h2 style="color:#1D9E75">⚙ FleetCare — Alerta de mantenimiento</h2>
+          <p>Hola <strong>{usuario.nombre}</strong>,</p>
+          <p>Su vehículo <strong>{nombre_vehiculo}</strong> requiere atención:</p>
+          <ul style="background:#f9f9f9;padding:16px 24px;border-radius:8px;border:1px solid #eee">
+            {lista_html}
+          </ul>
+          <p>Por favor contacte a su Fleet Manager para coordinar el servicio.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="font-size:12px;color:#999">FleetCare — Sistema de mantenimiento preventivo</p>
+        </div>"""
+
+        asunto = f'FleetCare: {len(alertas_red)} vencido(s), {len(alertas_yellow)} próximo(s) — {v.marca} {v.modelo}'
+        enviar_correo(usuario.email, usuario.nombre, asunto, cuerpo)
+        if admin and admin.email != usuario.email:
+            enviar_correo(admin.email, 'Administrador', f'[Admin] {asunto}', cuerpo)
+
+@app.route('/admin/enviar-alertas')
+@admin_requerido
+def enviar_alertas_manual():
+    """El admin puede disparar el envío de alertas manualmente."""
+    with app.app_context():
+        verificar_y_enviar_alertas()
+    return redirect(url_for('dashboard_admin'))
 
 # ─── INIT ──────────────────────────────────────────────────
 
