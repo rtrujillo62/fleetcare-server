@@ -3,4 +3,4 @@ flask-login
 flask-sqlalchemy
 werkzeug
 gunicorn
-sendgrid
+requests

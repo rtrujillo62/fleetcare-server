@@ -627,24 +627,34 @@ def actualizar_odometro(vid):
 # ─── CORREOS ───────────────────────────────────────────────
 
 def enviar_correo(destinatario_email, destinatario_nombre, asunto, cuerpo_html):
-    """Envía correo via SendGrid si está configurado, sino solo loguea."""
-    sg_key = os.environ.get('SENDGRID_API_KEY')
-    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@fleetcare.app')
-    if not sg_key:
+    """Envía correo via Brevo (antes Sendinblue) si está configurado."""
+    api_key = os.environ.get('BREVO_API_KEY')
+    remitente_email = os.environ.get('ADMIN_EMAIL', 'admin@fleetcare.app')
+    remitente_nombre = 'FleetCare'
+    if not api_key:
         print(f'[CORREO no configurado] Para: {destinatario_email} | Asunto: {asunto}')
         return False
     try:
-        import sendgrid
-        from sendgrid.helpers.mail import Mail
-        sg = sendgrid.SendGridAPIClient(api_key=sg_key)
-        message = Mail(
-            from_email=admin_email,
-            to_emails=destinatario_email,
-            subject=asunto,
-            html_content=cuerpo_html
-        )
-        sg.send(message)
-        return True
+        import requests
+        url = 'https://api.brevo.com/v3/smtp/email'
+        headers = {
+            'accept': 'application/json',
+            'api-key': api_key,
+            'content-type': 'application/json'
+        }
+        data = {
+            'sender': {'name': remitente_nombre, 'email': remitente_email},
+            'to': [{'email': destinatario_email, 'name': destinatario_nombre}],
+            'subject': asunto,
+            'htmlContent': cuerpo_html
+        }
+        resp = requests.post(url, json=data, headers=headers, timeout=10)
+        if resp.status_code in (200, 201):
+            print(f'Correo enviado a {destinatario_email}')
+            return True
+        else:
+            print(f'Error Brevo: {resp.status_code} {resp.text}')
+            return False
     except Exception as e:
         print(f'Error enviando correo: {e}')
         return False
