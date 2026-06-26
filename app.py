@@ -361,6 +361,33 @@ def admin_flota():
         data.append({'vehiculo': v, 'estado': estado})
     return render_template('admin_flota.html', data=data, usuario=usuario_actual())
 
+@app.route('/admin/vehiculo/nuevo', methods=['GET','POST'])
+@admin_requerido
+def admin_nuevo_vehiculo():
+    u = usuario_actual()
+    if request.method == 'POST':
+        v = Vehiculo(
+            usuario_id=u.id,
+            marca=request.form.get('marca',''),
+            modelo=request.form.get('modelo',''),
+            anio=request.form.get('anio'),
+            placa=request.form.get('placa',''),
+            vin=request.form.get('vin','').upper(),
+            tipo=request.form.get('tipo','sedan'),
+            combustible=request.form.get('combustible','gasolina'),
+            color=request.form.get('color',''),
+            odometro=float(request.form.get('odometro',0) or 0),
+            kml_esperado=float(request.form.get('kml_esperado',0) or 0) or None,
+            capacidad_tanque=float(request.form.get('capacidad_tanque',0) or 0) or None,
+            alerta_km=float(request.form.get('alerta_km',250) or 250),
+            ultimo_servicio_fecha=datetime.strptime(request.form.get('ultimo_servicio_fecha'), '%Y-%m-%d').date() if request.form.get('ultimo_servicio_fecha') else None,
+            ultimo_servicio_odo=float(request.form.get('ultimo_servicio_odo',0) or 0) or None,
+        )
+        db.session.add(v)
+        db.session.commit()
+        return redirect(url_for('dashboard_admin'))
+    return render_template('vehiculo_form.html', v=None, usuario=u)
+
 @app.route('/admin/vehiculo/<int:vid>')
 @admin_requerido
 def admin_vehiculo(vid):
@@ -627,10 +654,8 @@ def actualizar_odometro(vid):
 # ─── CORREOS ───────────────────────────────────────────────
 
 def enviar_correo(destinatario_email, destinatario_nombre, asunto, cuerpo_html):
-    """Envía correo via Brevo (antes Sendinblue) si está configurado."""
+    """Envía correo via Brevo API."""
     api_key = os.environ.get('BREVO_API_KEY')
-    remitente_email = os.environ.get('ADMIN_EMAIL', 'admin@fleetcare.app')
-    remitente_nombre = 'FleetCare'
     if not api_key:
         print(f'[CORREO no configurado] Para: {destinatario_email} | Asunto: {asunto}')
         return False
@@ -643,12 +668,14 @@ def enviar_correo(destinatario_email, destinatario_nombre, asunto, cuerpo_html):
             'content-type': 'application/json'
         }
         data = {
-            'sender': {'name': remitente_nombre, 'email': remitente_email},
+            'sender': {'name': 'FleetCare', 'email': 'noreply@fleetcare-notifications.com'},
             'to': [{'email': destinatario_email, 'name': destinatario_nombre}],
+            'replyTo': {'email': os.environ.get('ADMIN_EMAIL', 'admin@fleetcare.app')},
             'subject': asunto,
             'htmlContent': cuerpo_html
         }
         resp = requests.post(url, json=data, headers=headers, timeout=10)
+        print(f'Brevo response: {resp.status_code} {resp.text}')
         if resp.status_code in (200, 201):
             print(f'Correo enviado a {destinatario_email}')
             return True
