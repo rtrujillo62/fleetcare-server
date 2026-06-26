@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %} — Mi perfil{% endblock %}
+{% block content %}
+<div class="container" style="max-width:500px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <a href="{% if usuario.rol == 'admin' %}/admin{% else %}/usuario{% endif %}" class="btn btn-sm"><i class="ti ti-arrow-left"></i></a>
+    <h1 style="font-size:22px;font-weight:700">Mi perfil</h1>
+  </div>
+
+  <!-- Info básica -->
+  <div class="card" style="margin-bottom:16px">
+    <h2 style="margin-bottom:16px">Información de cuenta</h2>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600;margin-bottom:3px">Nombre</div>
+        <div style="font-size:16px;font-weight:500">{{ usuario.nombre }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600;margin-bottom:3px">Correo electrónico</div>
+        <div style="font-size:15px">{{ usuario.email }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--txt2);text-transform:uppercase;font-weight:600;margin-bottom:3px">Rol</div>
+        <span class="badge {% if usuario.rol == 'admin' %}badge-green{% else %}badge-yellow{% endif %}">{{ usuario.rol|capitalize }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cambiar contraseña -->
+  <div class="card">
+    <h2 style="margin-bottom:16px">Cambiar contraseña</h2>
+    {% if error %}
+    <div class="alert-box red" style="margin-bottom:16px">{{ error }}</div>
+    {% endif %}
+    {% if exito %}
+    <div class="alert-box" style="background:#E1F5EE;border:1px solid #5DCAA5;color:var(--gd);border-radius:var(--rsm);padding:12px 16px;margin-bottom:16px">
+      <i class="ti ti-check"></i> {{ exito }}
+    </div>
+    {% endif %}
+    <form method="POST">
+      <label>Contraseña actual *</label>
+      <div style="position:relative;margin-bottom:14px">
+        <input type="password" name="password_actual" id="pwd-actual" placeholder="Tu contraseña actual" required style="margin-bottom:0;padding-right:42px">
+        <button type="button" onclick="togglePwd('pwd-actual','eye-actual')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#777;padding:0">
+          <i class="ti ti-eye" id="eye-actual" style="font-size:18px"></i>
+        </button>
+      </div>
+      <label>Nueva contraseña *</label>
+      <div style="position:relative;margin-bottom:14px">
+        <input type="password" name="password_nueva" id="pwd-nueva" placeholder="Mínimo 6 caracteres" required minlength="6" style="margin-bottom:0;padding-right:42px">
+        <button type="button" onclick="togglePwd('pwd-nueva','eye-nueva')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#777;padding:0">
+          <i class="ti ti-eye" id="eye-nueva" style="font-size:18px"></i>
+        </button>
+      </div>
+      <label>Confirmar nueva contraseña *</label>
+      <div style="position:relative;margin-bottom:14px">
+        <input type="password" name="password_confirmar" id="pwd-confirmar" placeholder="Repite la nueva contraseña" required style="margin-bottom:0;padding-right:42px">
+        <button type="button" onclick="togglePwd('pwd-confirmar','eye-confirmar')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#777;padding:0">
+          <i class="ti ti-eye" id="eye-confirmar" style="font-size:18px"></i>
+        </button>
+      </div>
+      <p style="font-size:12px;color:#888;text-align:center;margin-bottom:10px">
+        <i class="ti ti-info-circle" style="vertical-align:-2px"></i> Verifique los datos antes de guardar.
+      </p>
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;padding:13px;font-size:15px">
+        <i class="ti ti-lock"></i> Cambiar contraseña
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+function togglePwd(inputId, iconId){
+  const inp=document.getElementById(inputId);
+  const ico=document.getElementById(iconId);
+  if(inp.type==='password'){inp.type='text';ico.className='ti ti-eye-off';}
+  else{inp.type='password';ico.className='ti ti-eye';}
+}
+</script>
+{% endblock %}

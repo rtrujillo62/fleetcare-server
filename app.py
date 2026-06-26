@@ -215,6 +215,28 @@ def index():
         return redirect(url_for('dashboard_admin'))
     return redirect(url_for('dashboard_usuario'))
 
+@app.route('/perfil', methods=['GET','POST'])
+@login_requerido
+def perfil():
+    u = usuario_actual()
+    error = None
+    exito = None
+    if request.method == 'POST':
+        actual = request.form.get('password_actual','')
+        nueva = request.form.get('password_nueva','')
+        confirmar = request.form.get('password_confirmar','')
+        if not check_password_hash(u.password_hash, actual):
+            error = 'La contraseña actual no es correcta.'
+        elif len(nueva) < 6:
+            error = 'La nueva contraseña debe tener al menos 6 caracteres.'
+        elif nueva != confirmar:
+            error = 'Las contraseñas nuevas no coinciden.'
+        else:
+            u.password_hash = generate_password_hash(nueva)
+            db.session.commit()
+            exito = 'Contraseña cambiada exitosamente.'
+    return render_template('perfil.html', usuario=u, error=error, exito=exito)
+
 @app.route('/register', methods=['GET','POST'])
 def register():
     if 'usuario_id' in session:

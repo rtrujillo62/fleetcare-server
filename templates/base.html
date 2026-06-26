@@ -79,6 +79,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <span style="flex:1;font-size:13px;color:var(--txt2)">{{ usuario.nombre }}
     {% if usuario.rol == 'admin' %}<span class="badge badge-green" style="margin-left:6px">Admin</span>{% endif %}
   </span>
+  <a href="/perfil" class="logout-btn" style="margin-right:12px"><i class="ti ti-user-circle"></i> Perfil</a>
   <a href="/logout" class="logout-btn"><i class="ti ti-logout"></i> Salir</a>
   {% endif %}
 </div>
