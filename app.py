@@ -423,6 +423,24 @@ def agregar_documento():
     db.session.commit()
     return redirect(url_for('admin_vehiculo', vid=vid))
 
+@app.route('/vehiculo/<int:vid>/eliminar', methods=['POST'])
+@login_requerido
+def eliminar_vehiculo(vid):
+    u = usuario_actual()
+    v = Vehiculo.query.get_or_404(vid)
+    if v.usuario_id != u.id and u.rol != 'admin':
+        return redirect(url_for('dashboard_usuario'))
+    # Eliminar todo lo relacionado
+    Servicio.query.filter_by(vehiculo_id=vid).delete()
+    RegistroCombustible.query.filter_by(vehiculo_id=vid).delete()
+    LecturaOdo.query.filter_by(vehiculo_id=vid).delete()
+    Documento.query.filter_by(vehiculo_id=vid).delete()
+    db.session.delete(v)
+    db.session.commit()
+    if u.rol == 'admin':
+        return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard_usuario'))
+
 @app.route('/admin/documento/<int:did>/eliminar')
 @admin_requerido
 def eliminar_documento(did):

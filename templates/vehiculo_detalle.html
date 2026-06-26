@@ -10,6 +10,9 @@
     {% endif %}
     <h1 style="font-size:20px;font-weight:700;flex:1">{{ v.marca }} {{ v.modelo }} {{ v.anio }}</h1>
     <a href="/usuario/vehiculo/{{ v.id }}/editar" class="btn btn-sm"><i class="ti ti-edit"></i> Editar</a>
+    <form method="POST" action="/vehiculo/{{ v.id }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar {{ v.marca }} {{ v.modelo }}? Se borrarán todos sus servicios, combustible y lecturas. Esta acción no se puede deshacer.')">
+      <button type="submit" class="btn btn-sm btn-red"><i class="ti ti-trash"></i> Eliminar</button>
+    </form>
   </div>
 
   <!-- Error de validación -->
