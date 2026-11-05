@@ -648,6 +648,71 @@ def registrar_combustible(vid):
     db.session.commit()
     return redirect(url_for('ver_vehiculo', vid=vid))
 
+@app.route('/usuario/combustible/<int:cid>/editar', methods=['GET','POST'])
+@login_requerido
+def editar_combustible(cid):
+    u = usuario_actual()
+    c = RegistroCombustible.query.get_or_404(cid)
+    v = Vehiculo.query.get_or_404(c.vehiculo_id)
+    if v.usuario_id != u.id and u.rol != 'admin':
+        return redirect(url_for('dashboard_usuario'))
+    if request.method == 'POST':
+        fecha_str = request.form.get('fecha')
+        odo = float(request.form.get('odometro',0) or 0)
+        litros = float(request.form.get('litros',0) or 0)
+        costo = float(request.form.get('costo',0) or 0) or None
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else c.fecha
+        # Validar contra la lectura anterior (excluyendo esta carga)
+        lec = LecturaOdo.query.filter_by(vehiculo_id=v.id, odometro=c.odometro, fecha=c.fecha, fuente='combustible').first()
+        otras = LecturaOdo.query.filter(LecturaOdo.vehiculo_id==v.id)
+        if lec:
+            otras = otras.filter(LecturaOdo.id != lec.id)
+        previas = [x.odometro for x in otras.all() if x.odometro is not None and x.odometro <= c.odometro]
+        odo_prev = max(previas) if previas else 0
+        if odo < odo_prev:
+            return render_template('editar_combustible.html', c=c, v=v,
+                error=f'El odómetro ({int(odo):,} km) es menor a la lectura anterior ({int(odo_prev):,} km). Por favor verifique.')
+        if v.kml_esperado and v.capacidad_tanque and odo_prev:
+            max_posible = odo_prev + (v.kml_esperado * v.capacidad_tanque)
+            if odo > max_posible:
+                return render_template('editar_combustible.html', c=c, v=v,
+                    error=f'El odómetro ({int(odo):,} km) parece incorrecto. El máximo posible desde la lectura anterior es {int(max_posible):,} km.')
+        c.fecha = fecha
+        c.odometro = odo
+        c.litros = litros
+        c.costo = costo
+        c.precio_litro = round(costo/litros, 3) if costo and litros else None
+        c.tanque_lleno = request.form.get('tanque_lleno') == '1'
+        c.notas = request.form.get('notas','')
+        if lec:
+            lec.odometro = odo
+            lec.fecha = fecha
+        todas = [x.odometro for x in LecturaOdo.query.filter_by(vehiculo_id=v.id).all() if x.odometro is not None]
+        if todas:
+            v.odometro = max(todas)
+        db.session.commit()
+        return redirect(url_for('ver_vehiculo', vid=v.id))
+    return render_template('editar_combustible.html', c=c, v=v, error=None)
+
+@app.route('/usuario/combustible/<int:cid>/eliminar', methods=['POST'])
+@login_requerido
+def eliminar_combustible(cid):
+    u = usuario_actual()
+    c = RegistroCombustible.query.get_or_404(cid)
+    v = Vehiculo.query.get_or_404(c.vehiculo_id)
+    if v.usuario_id != u.id and u.rol != 'admin':
+        return redirect(url_for('dashboard_usuario'))
+    lec = LecturaOdo.query.filter_by(vehiculo_id=v.id, odometro=c.odometro, fecha=c.fecha, fuente='combustible').first()
+    if lec:
+        db.session.delete(lec)
+    db.session.delete(c)
+    db.session.flush()
+    todas = [x.odometro for x in LecturaOdo.query.filter_by(vehiculo_id=v.id).all() if x.odometro is not None]
+    if todas:
+        v.odometro = max(todas)
+    db.session.commit()
+    return redirect(url_for('ver_vehiculo', vid=v.id))
+
 @app.route('/usuario/vehiculo/<int:vid>/odometro', methods=['POST'])
 @login_requerido
 def actualizar_odometro(vid):

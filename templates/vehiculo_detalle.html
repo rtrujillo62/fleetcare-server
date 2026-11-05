@@ -132,7 +132,7 @@
     <h2><i class="ti ti-gas-station" style="color:var(--blue)"></i> Historial de combustible</h2>
     {% if combustibles %}
     <table>
-      <thead><tr><th>Fecha</th><th>Odómetro</th><th>Litros</th><th>Costo</th><th>Precio/L</th><th>Tipo</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Odómetro</th><th>Litros</th><th>Costo</th><th>Precio/L</th><th>Tipo</th><th></th></tr></thead>
       <tbody>
       {% for c in combustibles %}
       <tr>
@@ -142,6 +142,12 @@
         <td>{% if c.costo %}${{ "%.2f"|format(c.costo) }}{% else %}—{% endif %}</td>
         <td>{% if c.precio_litro %}${{ "%.3f"|format(c.precio_litro) }}{% else %}—{% endif %}</td>
         <td>{% if c.tanque_lleno %}<span class="badge badge-green">Lleno</span>{% else %}<span style="color:var(--txt2);font-size:12px">Parcial</span>{% endif %}</td>
+        <td style="white-space:nowrap">
+          <a href="/usuario/combustible/{{ c.id }}/editar" class="btn btn-sm" title="Editar"><i class="ti ti-pencil"></i></a>
+          <form method="POST" action="/usuario/combustible/{{ c.id }}/eliminar" style="display:inline" onsubmit="return confirm('¿Eliminar esta carga de combustible?')">
+            <button type="submit" class="btn btn-sm btn-red" title="Eliminar"><i class="ti ti-trash"></i></button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
       </tbody>
