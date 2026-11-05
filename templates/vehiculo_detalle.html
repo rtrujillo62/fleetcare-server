@@ -138,7 +138,7 @@
       <tr>
         <td>{{ c.fecha.strftime('%d/%m/%Y') }}</td>
         <td>{{ "{:,.0f}".format(c.odometro) }} km</td>
-        <td>{{ "%.1f"|format(c.litros) }} L</td>
+        <td>{{ "%.3f"|format(c.litros) }} L</td>
         <td>{% if c.costo %}${{ "%.2f"|format(c.costo) }}{% else %}—{% endif %}</td>
         <td>{% if c.precio_litro %}${{ "%.3f"|format(c.precio_litro) }}{% else %}—{% endif %}</td>
         <td>{% if c.tanque_lleno %}<span class="badge badge-green">Lleno</span>{% else %}<span style="color:var(--txt2);font-size:12px">Parcial</span>{% endif %}</td>
@@ -215,7 +215,7 @@
       <label>Fecha</label><input type="date" name="fecha" id="fc-fecha" value="{{ now }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div><label>Odómetro (km) *</label><input type="number" name="odometro" id="fc-odo" value="{{ v.odometro|int }}" required oninput="calcPxL()"></div>
-        <div><label>Litros *</label><input type="number" name="litros" id="fc-litros" placeholder="40.0" step="0.1" required oninput="calcPxL()"></div>
+        <div><label>Litros *</label><input type="number" name="litros" id="fc-litros" placeholder="40.000" step="0.001" required oninput="calcPxL()"></div>
         <div><label>Costo total *</label><input type="number" name="costo" id="fc-costo" placeholder="65.00" step="0.01" required oninput="calcPxL()"></div>
         <div><label>Precio/litro <span style="font-size:11px;color:var(--g);font-weight:600">AUTO</span></label>
           <input type="text" id="fc-pxl" readonly style="background:#f6f6f4;color:#777" placeholder="—">
